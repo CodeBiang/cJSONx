@@ -53,7 +53,7 @@ typedef struct cjx_basic_t {
 ```
 Reflect data fields:
 ```c
-cjsonx_reflect_t simp_reflect[] = {
+const cjsonx_reflect_t simp_reflect[] = {
     __cjsonx_int(cjx_simp_t, a),
     __cjsonx_end()
 };
@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 ```
-&emsp;&emsp;If your struct has a pointer field, remember use `cjsonx_reflection_ptr_free` to free them
+&emsp;&emsp;If your struct has a pointer field, remember to use `cjsonx_reflection_ptr_free` to free them
 
 ### Extention Usage
 

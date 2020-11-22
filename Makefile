@@ -3,7 +3,7 @@ RM = rm -rf
 
 OBJS := cJSONx.o cJSON.o
 
-CJSONX_DEMOS = deserialize_basic.demo deserialize_arr.demo ex.demo serialize.demo
+CJSONX_DEMOS = deserialize_basic.demo deserialize_arr.demo ex.demo serialize.demo simple_demo.demo
 
 LIB_NAME = cjsonx
 CJSONX_STATIC = lib$(LIB_NAME).a
