@@ -23,7 +23,7 @@
  * cJSONx
  * Enhanced JSON converter based on cJSON
  * 
- * @version 1.0.0
+ * @version 1.0.1
  * @author  CodeBiang@163.com
  * @date    2020/10/20
  */
@@ -89,12 +89,12 @@ const cjsonx_reflect_t _cjsonx_reflect_int[] = {
 const cjsonx_reflect_t _cjsonx_reflect_string_ptr[] = {
     {"0strptr", 0, sizeof(char*), CJSONX_STRING, NULL, NULL, 0, 1, {0}}, {0}};
 
-const cjsonx_reflect_t _cjsonx_reflect_string_bufferred[] = {
-    {"0str", 0, sizeof(char*), CJSONX_STRING, NULL, NULL, 0, 0, {0}}, {0}};
-
 const cjsonx_reflect_t _cjsonx_reflect_real[] = {
     {"0real", 0, sizeof(double), CJSONX_REAL, NULL, NULL, 0, 0, {0}}, {0}};
 
+const cjsonx_reflect_t _cjsonx_reflect_string_bufferred[] = {
+    {"0str", 0, sizeof(char*), CJSONX_STRING, NULL, NULL, 0, 0, {0}}, {0}};
+    
 const cjsonx_reflect_t _cjsonx_reflect_float[] = {
     {"0float", 0, sizeof(float), CJSONX_REAL, NULL, NULL, 0, 0, {0}}, {0}};
 
@@ -815,7 +815,14 @@ int _cjsonx_deserialize_real(cJSON* jo_tmp, void* output, const cjsonx_reflect_t
     }
     temp_f = (float)temp_d;
 
-    _cjsonx_set_field_fast(output, tbl[index].size == sizeof(double) ? (void*)&temp_d : (void*)&temp_f, tbl + index);
+
+    if (tbl[index].size == sizeof(double)) {
+        _cjsonx_set_field_fast(output, (void*)&temp_d, 
+                _cjsonx_reflect_double);
+    } else {
+        _cjsonx_set_field_fast(output, (void*)&temp_f, 
+                _cjsonx_reflect_float);
+    }
     return ERR_CJSONX_NONE;
 }
 
@@ -895,8 +902,14 @@ int _cjsonx_deserialize_arr_real(cJSON* jo_tmp, void* output, const cjsonx_refle
         temp_d = cjsonx_integer_value(jo_tmp);
     }
     temp_f = (float)temp_d;
-
-    _cjsonx_set_field_fast(output, arr_reflect->item_size == sizeof(double) ? (void*)&temp_d : (void*)&temp_f, tbl + index);
+  
+    if (arr_reflect->item_size == sizeof(double)) {
+        _cjsonx_set_field_fast(output, (void*)&temp_d, 
+                _cjsonx_reflect_double);
+    } else {
+        _cjsonx_set_field_fast(output, (void*)&temp_f, 
+                _cjsonx_reflect_float);
+    }
     return ERR_CJSONX_NONE;
 }
 

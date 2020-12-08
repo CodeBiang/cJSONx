@@ -23,7 +23,7 @@
  * cJSONx
  * Enhanced JSON converter based on cJSON
  * 
- * @version 1.0.0
+ * @version 1.0.1
  * @author  CodeBiang@163.com
  * @date    2020/10/20
  */
