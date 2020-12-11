@@ -816,13 +816,7 @@ int _cjsonx_deserialize_real(cJSON* jo_tmp, void* output, const cjsonx_reflect_t
     temp_f = (float)temp_d;
 
 
-    if (tbl[index].size == sizeof(double)) {
-        _cjsonx_set_field_fast(output, (void*)&temp_d, 
-                _cjsonx_reflect_double);
-    } else {
-        _cjsonx_set_field_fast(output, (void*)&temp_f, 
-                _cjsonx_reflect_float);
-    }
+    _cjsonx_set_field_fast(output, tbl[index].size == sizeof(double) ? (void*)&temp_d : (void*)&temp_f, tbl + index);
     return ERR_CJSONX_NONE;
 }
 
