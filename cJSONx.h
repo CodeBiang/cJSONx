@@ -302,59 +302,70 @@ const char* cjsonx_err_str(int code);
 /**
  * Convert Json string to struct
  * 
- * @param   jstr Json String
- * @param   output Struct address
- * @param   tbl Reflection table
- * @return  Error code 
+ * @param jstr Json string
+ * @param output Struct address
+ * @param tbl Reflection table
+ * @return Error code 
  */
 int cjsonx_str2struct(const char* jstr, void* output, const cjsonx_reflect_t* tbl);
 
 /**
+ * Convert Json string with length to struct
+ * 
+ * @param jstr Json string bufferred
+ * @param len Buffer length
+ * @param output Struct address
+ * @param tbl Reflection table
+ * @return Error code 
+ */
+int cjsonx_nstr2struct(const char* jstr, size_t len, void* output, const cjsonx_reflect_t* tbl);
+
+/**
  * Convert cJSON object to struct
  * 
- * @param   jo Json object
- * @param   output Struct address
- * @param   tbl Reflection table
- * @return  Error code 
+ * @param jo Json object
+ * @param output Struct address
+ * @param tbl Reflection table
+ * @return Error code 
  */
 int cjsonx_obj2struct(cJSON* jo, void* output, const cjsonx_reflect_t* tbl);
 
 /**
  * Convert struct to json string(malloc)
  * 
- * @param   jstr Pointer to place string address
- * @param   input Struct address
- * @param   tbl Reflection table
- * @return  error code
+ * @param jstr Pointer to place string address
+ * @param input Struct address
+ * @param tbl Reflection table
+ * @return error code
  */
 int cjsonx_struct2str(char** jstr, void* input, const cjsonx_reflect_t* tbl);
 
 /**
  * Convert struct to json string(malloc)
  * 
- * @param   jstr String buffer
- * @param   size Buffer size
- * @param   input Struct address
- * @param   tbl Reflection table
- * @return  error code
+ * @param jstr String buffer
+ * @param size Buffer size
+ * @param input Struct address
+ * @param tbl Reflection table
+ * @return error code
  */
 int cjsonx_struct2str_bufferred(char* jstr, const int size, void* input, const cjsonx_reflect_t* tbl);
 
 /**
  * Convert struct to cJSON object
  * 
- * @param   obj cJSON object
- * @param   input Struct address
- * @param   tbl Reflection table
- * @return  error code
+ * @param obj cJSON object
+ * @param input Struct address
+ * @param tbl Reflection table
+ * @return error code
  */
 int cjsonx_struct2obj(cJSON* obj, void* input, const cjsonx_reflect_t* tbl);
 
 /**
  * Struct info print
  * 
- * @param   data Struct address
- * @param   tbl Reflection table
+ * @param data Struct address
+ * @param tbl Reflection table
  */
 void cjsonx_reflection_print(void* data, const cjsonx_reflect_t* tbl);
 
@@ -363,8 +374,8 @@ void cjsonx_reflection_print(void* data, const cjsonx_reflect_t* tbl);
  * Before using this function, make sure struct's pointer filed is created by
  * `malloc` or `cJSON_malloc(malloc of cJSON_Hooks)`
  * 
- * @param   data Struct address
- * @param   tbl Reflection table
+ * @param data Struct address
+ * @param tbl Reflection table
  */
 void cjsonx_reflection_ptr_free(void* list, const cjsonx_reflect_t* tbl);
 

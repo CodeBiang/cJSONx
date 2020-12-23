@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include "cJSONx.h"
 
 typedef struct {
@@ -37,10 +39,11 @@ int main(int argc, char* argv[]) {
     const char* json = "{"
         "\"id\":12,"
         "\"ip\":13,"
-        "\"gateway\":15"
+        "\"name\":\"template\","
+        "\"gw\":15"
         "}";
     printf("%s\r\n", json);
-    cjsonx_str2struct(json, &device, device_reflection);
+    cjsonx_nstr2struct(json, strlen(json), &device, device_reflection);
 
     char* p;
     cjsonx_struct2str(&p, &device, device_reflection);

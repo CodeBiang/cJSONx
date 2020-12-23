@@ -39,8 +39,8 @@
 
 static cJSON* cjson_impl_object_get(const cJSON* object, const char* key);
 static cjsonx_type_e cjson_impl_typeof(cJSON* object);
-static cJSON* cjson_impl_loadb(const char* buffer, size_t buflen);
-static void cjson_impl_decref(cJSON* object);
+static cJSON* cjson_impl_parse(const char* buffer, size_t buflen);
+static void cjson_impl_delete(cJSON* object);
 static const char* cjson_impl_string_value(const cJSON* object);
 __attribute__((unused)) static size_t cjson_impl_string_length(const cJSON* object);
 static long long cjson_impl_integer_value(const cJSON* object);
@@ -61,8 +61,8 @@ static int cjson_impl_object_set_new(cJSON* rootObj, const char* field, cJSON* o
 
 #define cjsonx_object_get cjson_impl_object_get
 #define cjsonx_typeof cjson_impl_typeof
-#define cjsonx_loadb cjson_impl_loadb
-#define cjsonx_decref cjson_impl_decref
+#define cjsonx_parse cjson_impl_parse
+#define cjsonx_delete cjson_impl_delete
 #define cjsonx_string_value cjson_impl_string_value
 #define cjsonx_string_length cjson_impl_string_length
 #define cjsonx_integer_value cjson_impl_integer_value
@@ -283,7 +283,7 @@ int cjsonx_struct2str(char** jstr, void* input, const cjsonx_reflect_t* tbl) {
         }
     }
 
-    cjsonx_decref(jsonPack);
+    cjsonx_delete(jsonPack);
     return ret;
 }
 
@@ -300,7 +300,7 @@ int cjsonx_struct2str_bufferred(char* jstr, const int size, void* input, const c
         }
     }
 
-    cjsonx_decref(jsonPack);
+    cjsonx_delete(jsonPack);
     return ret;
 }
 
@@ -393,7 +393,7 @@ int _cjsonx_serialize_object(void* input, const cjsonx_reflect_t* tbl, int index
     if (ret == ERR_CJSONX_NONE) {
         *obj = jotmp;
     } else {
-        cjsonx_decref(jotmp);
+        cjsonx_delete(jotmp);
     }
 
     return ret;
@@ -445,12 +445,12 @@ int _cjsonx_serialize_array(void* input, const cjsonx_reflect_t* tbl, int index,
             successCount++;
             cjsonx_array_add(joArray, jotmp);
         } else {
-            cjsonx_decref(jotmp);
+            cjsonx_delete(jotmp);
         }
     }
 
     if (successCount == 0) {
-        cjsonx_decref(joArray);
+        cjsonx_delete(joArray);
         return ERR_CJSONX_MISSING_FIELD;
     } else {
         *obj = joArray;
@@ -593,12 +593,26 @@ int _cjsonx_serialize_arr_bool(void* input, const cjsonx_reflect_t* tbl, int ind
 int cjsonx_str2struct(const char* jstr, void* output,
                        const cjsonx_reflect_t* tbl) {
     int ret;
-    cJSON* jo = cjsonx_loadb(jstr, strlen(jstr));
+    cJSON* jo = cjsonx_parse(jstr, strlen(jstr));
 
     if (!jo) return ERR_CJSONX_FORMAT;
 
     ret = cjsonx_obj2struct(jo, output, tbl);
-    cjsonx_decref(jo);
+    cjsonx_delete(jo);
+
+    return ret;
+}
+
+int cjsonx_nstr2struct(const char* jstr, size_t len, void* output, const cjsonx_reflect_t* tbl) {
+    int ret;
+    if (len < 0) return ERR_CJSONX_ARGS;
+
+    cJSON* jo = cjsonx_parse(jstr, len);
+
+    if (!jo) return ERR_CJSONX_FORMAT;
+
+    ret = cjsonx_obj2struct(jo, output, tbl);
+    cjsonx_delete(jo);
 
     return ret;
 }
@@ -1307,16 +1321,16 @@ cjsonx_type_e cjson_impl_typeof(cJSON* object) {
     }
 }
 
-cJSON* cjson_impl_loadb(const char* buffer, size_t buflen) {
+cJSON* cjson_impl_parse(const char* buffer, size_t buflen) {
     cJSON* ret = NULL;
-    ret = cJSON_Parse(buffer);
+    ret = cJSON_ParseWithLength(buffer, buflen);
     if (!ret) {
         CJSONX_DBG("\e[0;35mJson string pasing error: %s\e[0m\r\n", cJSON_GetErrorPtr());
     }
     return ret;
 }
 
-void cjson_impl_decref(cJSON* object) { cJSON_Delete(object); }
+void cjson_impl_delete(cJSON* object) { cJSON_Delete(object); }
 
 const char* cjson_impl_string_value(const cJSON* object) {
     return cJSON_GetStringValue(object);
