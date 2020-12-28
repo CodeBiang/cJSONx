@@ -31,72 +31,72 @@ make demo
 
 ## Usage
 &emsp;&emsp;Due to the nature of C language memory allocation, data structure convertion should consider how to map the memory.
-&emsp;&emsp;cJSONx use reflection `cjsonx_reflection_t` to save struct memory information, so you can easily implement the conversation between json string and struct.
+&emsp;&emsp;cJSONx use reflection `cjsonx_reflect_t` to save struct memory information, so you can easily implement the conversation between json string and struct.
 
-### Basic Usage
-Define the data type:
+### Simple Usage
 ```c
-typedef struct cjx_simp_t {
-    int a;
-} cjx_simp_t;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-typedef struct cjx_basic_t {
-    int i;
-    bool b;
-    double d;
-    float f;
-    char* sptr;
-    char sbuf[20];
-    struct cjx_simp_t obj;
-    struct cjx_simp_t* objp;
-} cjx_basic_t;
-```
-Reflect data fields:
-```c
-const cjsonx_reflect_t simp_reflect[] = {
-    __cjsonx_int(cjx_simp_t, a),
+#include "cJSONx.h"
+
+struct device {
+    int id;
+    char name[20];
+    float temprature;
+    unsigned long tick;
+    
+    unsigned int ip;
+    unsigned int netmask;
+    unsigned int gateway;
+};
+
+const cjsonx_reflect_t device_reflection[] = {
+    __cjsonx_int(struct device, id),
+    __cjsonx_str(struct device, name),
+    __cjsonx_real(struct device, temprature),
+    __cjsonx_int(struct device, tick),
+    __cjsonx_int(struct device, ip),
+    __cjsonx_int(struct device, netmask),
+    __cjsonx_int(struct device, gateway),
+    
     __cjsonx_end()
 };
 
-const cjsonx_reflect_t basic_reflect[] = {
-    __cjsonx_int(cjx_basic_t, i),
-    __cjsonx_bool(cjx_basic_t, b),
-    __cjsonx_real(cjx_basic_t, d),
-    __cjsonx_real(cjx_basic_t, f),
-    // dynamic allocated string(pointer)
-    __cjsonx_str_ptr(cjx_basic_t, sptr),
-    // preallocated string(char array)
-    __cjsonx_str(cjx_basic_t, sbuf),
-    // preallocated struct
-    __cjsonx_object(cjx_basic_t, obj, simp_reflect),
-    // dynamic allocated struct(pointer)
-    __cjsonx_object_ptr(cjx_basic_t, objp, simp_reflect),
-    __cjsonx_end()
-};
-```
-Convertion:
-```c
-const char* json = "{"
-    "\"i\":1,"
-    "\"b\":true,"
-    "\"d\":1.222,"
-    "\"f\":2.333,"
-    "\"sbuf\":\"Hello World\","
-    " \"sptr\":\"Hello C\","
-    "\"obj\":{\"a\":2},"
-    "\"objp\":{\"a\":3}"
-"}";
+static void simple_serialize();
+static void simple_deserialize();
 
 int main(int argc, char* argv[]) {
-    cjx_basic_t basic;
-    int ret;
-    ret = cjsonx_str2struct(json, &basic, basic_reflect);
+    simple_serialize();
+    simple_deserialize();
+}
+
+void simple_serialize() {
+    struct device d = {
+        .id = 1,
+        .ip = 0x0A01A8C0,
+        .gateway = 0x0101A8C0,
+        .netmask = 0x00FFFFFF,
+        .name = "Hello World",
+        .temprature = 36.2F,
+        .tick = 123
+    };
+    char buf[300];
+    int ret = cjsonx_struct2str_preallocated(buf, sizeof(buf), &d, device_reflection);
     if (ret == ERR_CJSONX_NONE) {
-        cjsonx_reflection_print(&basic, basic_reflect);
-        // Free the memory allocated
-        cjsonx_reflection_ptr_free(&basic, basic_reflect);
+        printf("Serialized JSON string: %s\n", buf);
     }
-    return 0;
+}
+
+void simple_deserialize() {
+    const char* json = "{\"id\":1,\"name\":\"Hello World\",\"temprature\":36.2,\"tick\":123,\"ip\":167880896,\"netmask\":16777215,\"gateway\":16885952}";
+    struct device d;
+    int ret = cjsonx_str2struct(json, &d, device_reflection);
+    if (ret == ERR_CJSONX_NONE) {
+        printf("Deserialized struct: id[%d], name[%s], temprature[%f], tick[%ld], ip[%#08X], netmask[%#08X], gateway[%#08X]\n",
+            d.id, d.name, d.temprature, d.tick, d.ip, d.netmask, d.gateway);
+    }
 }
 ```
 &emsp;&emsp;If your struct has a pointer field, remember to use `cjsonx_reflection_ptr_free` to free them
@@ -107,79 +107,69 @@ int main(int argc, char* argv[]) {
 &emsp;&emsp;This is a demo:
 ```c
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
 #include "cJSONx.h"
 
-typedef struct {
-    int a;
-    int b;
-    int c;
-    int d;
-    int e;
+struct date {
+    int year;
+    int month;
+    int day;
+    int hour;
+    int min;
+    int sec;
+};
 
-    int arrcnt;
-    int arrb[10];
-} cjx_ex_t;
+enum booktype {
+    BOOK_TECH = 0,
+    BOOK_CARTOON
+};
 
-cjsonx_reflect_t ex_reflect[] = {
-    __cjsonx_int_ex(cjx_ex_t, a)
-        __nullable
-        __serialized
-        __deserialized
-        __cjsonx_ex_end,
-    __cjsonx_int_ex(cjx_ex_t, b)
-        __serialized
-        __deserialized
-        __cjsonx_ex_end,
-    __cjsonx_int_ex(cjx_ex_t, c)
-        __nullable
-        __deserialized
-        __cjsonx_ex_end,
-    __cjsonx_int_ex(cjx_ex_t, d)
-        __nullable
-        __deserialized
-        __cjsonx_ex_end,
-    __cjsonx_int_ex(cjx_ex_t, e)
-        __nullable
-        __serialized
-        __cjsonx_ex_end,
-    __cjsonx_array_int_ex(cjx_ex_t, arrb, arrcnt)
-        __nullable                  // Can be null
-        __deserialized              // Will be deserialized
-        __serialized_name("AAAA")   // Field name mapping
-        __serialized                // Will be serialized
-        __cjsonx_ex_end,
+struct book {
+    char* name;
+    struct date time;
+    enum booktype type;
+    
+    char isbn[11];
+
+    char** authors;
+    int author_cnt;
+};
+
+
+const cjsonx_reflect_t date_reflection[] = {
+    __cjsonx_int(struct date, year),
+    __cjsonx_int(struct date, month),
+    __cjsonx_int(struct date, day),
+    __cjsonx_int(struct date, min),
+    __cjsonx_int(struct date, hour),
+    __cjsonx_int(struct date, sec),
+    __cjsonx_end()
+};
+
+const cjsonx_reflect_t book_reflection[] = {
+    __cjsonx_str_ptr_ex(struct book, name),
+    __cjsonx_object_ex(struct book, time, date_reflection, 
+        __serialized(false)),
+    __cjsonx_int(struct book, type),
+    __cjsonx_str_ex(struct book, isbn, __serialized_name("ISBN")),
+    __cjsonx_array_ptr_str_ptr(struct book, authors, author_cnt),
     __cjsonx_end()
 };
 
 int main(int argc, char* argv[]) {
-    cjx_ex_t ex;
-    const char* json_cannot_null = "{\"a\":1,\"c\":3,\"d\":4,\"e\":5,\"AAAA\":[1,2,3]}";
-    printf("%s\r\n", cjsonx_err_str(cjsonx_str2struct(json_cannot_null, &ex, ex_reflect)));
-
-    const char* json = "{\"a\":1, \"b\":2, \"c\":3,\"d\":4,\"e\":5,\"AAAA\":[1,2,3]}";
-    memset(&ex, 0, sizeof(cjx_ex_t));
-    cjsonx_str2struct(json, &ex, ex_reflect);
-    cjsonx_reflection_print(&ex, ex_reflect);
-    char p[1024] = {0};
-    if (ERR_CJSONX_NONE == cjsonx_struct2str_bufferred(p, sizeof(p), &ex, ex_reflect)) {
-        printf("%s\r\n", p);
+    struct book b = {0};
+    const char* json = "{\"name\":\"AAA\",\"ISBN\":\"1234567890\",\"type\":0"
+        ",\"authors\":[\"a\",\"b\",\"c\"],\"time\":{\"year\":2020,\"month\":11"
+        ",\"day\":10,\"hour\":12,\"min\":12,\"sec\":12}}";
+    int ret = cjsonx_str2struct(json, &b, book_reflection);
+    if (ret == ERR_CJSONX_NONE) {
+        char* p;
+        cjsonx_struct2str(&p, &b, book_reflection);
+        printf("%s\n", p);
+        cjsonx_reflection_ptr_free(&b, book_reflection);
+        free(p);
     }
-    return 0;
 }
-```
-
-Result:
-``` c
-field not found
-a:1
-b:2
-c:3
-d:4
-e:0
-arrcnt:3
-0integer:1
-0integer:2
-0integer:3
-{"a":1,"b":2,"e":0,"AAAA":[1,2,3]}
 ```

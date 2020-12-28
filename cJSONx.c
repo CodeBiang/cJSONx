@@ -42,15 +42,21 @@ static cjsonx_type_e cjson_impl_typeof(cJSON* object);
 static cJSON* cjson_impl_parse(const char* buffer, size_t buflen);
 static void cjson_impl_delete(cJSON* object);
 static const char* cjson_impl_string_value(const cJSON* object);
-__attribute__((unused)) static size_t cjson_impl_string_length(const cJSON* object);
+#ifdef __GNUC__
+__attribute__((unused))
+#endif
+static size_t cjson_impl_string_length(const cJSON* object);
 static long long cjson_impl_integer_value(const cJSON* object);
 static double cjson_impl_real_value(const cJSON* object);
-__attribute__((unused)) static char cjson_impl_bool_value(const cJSON* object);
+#ifdef __GNUC__
+__attribute__((unused))
+#endif
+static char cjson_impl_bool_value(const cJSON* object);
 static size_t cjson_impl_array_size(const cJSON* object);
 static cJSON* cjson_impl_array_get(const cJSON* object, size_t index);
 static cJSON* cjson_impl_object(void);
 static char* cjson_impl_to_string(cJSON* object);
-static int cjson_impl_to_string_bufferred(cJSON* object, char* buf, const int size);
+static int cjson_impl_to_string_preallocated(cJSON* object, char* buf, const int size);
 static cJSON* cjson_impl_integer(long long val);
 static cJSON* cjson_impl_string(const char* val);
 static cJSON* cjson_impl_bool(char val);
@@ -72,7 +78,7 @@ static int cjson_impl_object_set_new(cJSON* rootObj, const char* field, cJSON* o
 #define cjsonx_array_get cjson_impl_array_get
 #define cjsonx_object cjson_impl_object
 #define cjsonx_to_string cjson_impl_to_string
-#define cjsonx_to_string_bufferred cjson_impl_to_string_bufferred
+#define cjsonx_to_string_preallocated cjson_impl_to_string_preallocated
 #define cjsonx_integer cjson_impl_integer
 #define cjsonx_string cjson_impl_string
 #define cjsonx_bool cjson_impl_bool
@@ -81,7 +87,7 @@ static int cjson_impl_object_set_new(cJSON* rootObj, const char* field, cJSON* o
 #define cjsonx_array_add cjson_impl_array_add
 #define cjsonx_object_set_new cjson_impl_object_set_new
 #define cjsonx_is_number(type) (type == CJSONX_REAL || type == CJSONX_INTEGER)
-#define cjsonx_is_bool(type)    (type == CJSONX_TRUE || type == CJSONX_FALSE)
+#define cjsonx_is_bool(type) (type == CJSONX_TRUE || type == CJSONX_FALSE)
 
 const cjsonx_reflect_t _cjsonx_reflect_int[] = {
     {"0integer", 0, sizeof(int), CJSONX_INTEGER, NULL, NULL, 0, 0, {0}}, {0}};
@@ -92,7 +98,7 @@ const cjsonx_reflect_t _cjsonx_reflect_string_ptr[] = {
 const cjsonx_reflect_t _cjsonx_reflect_real[] = {
     {"0real", 0, sizeof(double), CJSONX_REAL, NULL, NULL, 0, 0, {0}}, {0}};
 
-const cjsonx_reflect_t _cjsonx_reflect_string_bufferred[] = {
+const cjsonx_reflect_t _cjsonx_reflect_string_preallocated[] = {
     {"0str", 0, sizeof(char*), CJSONX_STRING, NULL, NULL, 0, 0, {0}}, {0}};
     
 const cjsonx_reflect_t _cjsonx_reflect_float[] = {
@@ -287,7 +293,7 @@ int cjsonx_struct2str(char** jstr, void* input, const cjsonx_reflect_t* tbl) {
     return ret;
 }
 
-int cjsonx_struct2str_bufferred(char* jstr, const int size, void* input, const cjsonx_reflect_t* tbl) {
+int cjsonx_struct2str_preallocated(char* jstr, const int size, void* input, const cjsonx_reflect_t* tbl) {
     cJSON* jsonPack = cjsonx_object();
     int ret = ERR_CJSONX_NONE;
     if (!jsonPack) return ERR_CJSONX_MEMORY;
@@ -295,7 +301,7 @@ int cjsonx_struct2str_bufferred(char* jstr, const int size, void* input, const c
     ret = cjsonx_struct2obj(jsonPack, input, tbl);
 
     if (ret == ERR_CJSONX_NONE) {
-        if (!cjsonx_to_string_bufferred(jsonPack, jstr, size)) {
+        if (!cjsonx_to_string_preallocated(jsonPack, jstr, size)) {
             ret = ERR_CJSONX_OVERFLOW;
         }
     }
@@ -463,7 +469,7 @@ int _cjsonx_serialize_array(void* input, const cjsonx_reflect_t* tbl, int index,
 int _cjsonx_serialize_real(void* input, const cjsonx_reflect_t* tbl, int index,
                         cJSON** obj) {
     double temp = 0;
-    char convert_cache[50];
+    char convert_cache[20];
     char* convert_pend;
     void* pSrc = NULL;
 
@@ -475,11 +481,12 @@ int _cjsonx_serialize_real(void* input, const cjsonx_reflect_t* tbl, int index,
     pSrc = (void*)((char*)input + tbl[index].offset);
 
     if (tbl[index].size == sizeof(double)) {
-        snprintf(convert_cache, sizeof(convert_cache), "%lf", *(double*)pSrc);
+        temp = *(double*)pSrc;
     } else {
-        snprintf(convert_cache, sizeof(convert_cache), "%f", *(float*)pSrc);
+        snprintf(convert_cache, sizeof(convert_cache), "%f", *(float*)pSrc - (int)(*(float*)pSrc));
+        temp = strtod(convert_cache, &convert_pend) + (int)(*(float*)pSrc);
     }
-    temp = strtod(convert_cache, &convert_pend);
+
     *obj = cjsonx_real(temp);
     return ERR_CJSONX_NONE;
 }
@@ -539,7 +546,7 @@ int _cjsonx_serialize_arr_integer(void* input, const cjsonx_reflect_t* tbl, int 
 int _cjsonx_serialize_arr_real(void* input, const cjsonx_reflect_t* tbl, int index,
                         const cjsonx_reflect_t* arr_reflect, cJSON** obj) {
     double temp = 0;
-    char convert_cache[50];
+    char convert_cache[20];
     char* convert_pend;
     void* pSrc = NULL;
     if (arr_reflect->item_size != sizeof(double) && arr_reflect->item_size != sizeof(float)) {
@@ -550,11 +557,12 @@ int _cjsonx_serialize_arr_real(void* input, const cjsonx_reflect_t* tbl, int ind
     pSrc = (void*)((char*)input + tbl[index].offset);
 
     if (arr_reflect->item_size == sizeof(double)) {
-        snprintf(convert_cache, sizeof(convert_cache), "%lf", *(double*)pSrc);
+        temp = *(double*)pSrc;
     } else {
-        snprintf(convert_cache, sizeof(convert_cache), "%f", *(float*)pSrc);
+        snprintf(convert_cache, sizeof(convert_cache), "%f", *(float*)pSrc - (int)(*(float*)pSrc));
+        temp = strtod(convert_cache, &convert_pend) + (int)(*(float*)pSrc);
     }
-    temp = strtod(convert_cache, &convert_pend);
+
     *obj = cjsonx_real(temp);
     return ERR_CJSONX_NONE;
 }
@@ -680,7 +688,7 @@ int _cjsonx_deserialize_string(cJSON* jo_tmp, void* output, const cjsonx_reflect
             strcpy(pDst, tempstr);
             _cjsonx_set_field_fast(output, &pDst, tbl + index);
         } else {
-            // Bufferred
+            // Preallocated
             memset(output + tbl[index].offset, 0, (tbl + index)->size);
             _cjsonx_set_field_buffered(output, tempstr, 
                 strlen(tempstr) >= (tbl + index)->size ? (tbl + index)->size - 1 : strlen(tempstr), 
@@ -864,7 +872,7 @@ int _cjsonx_deserialize_arr_string(cJSON* jo_tmp, void* output, const cjsonx_ref
             strcpy(pDst, tempstr);
             _cjsonx_set_field_fast(output, &pDst, tbl + index);
         } else {
-            // Bufferred
+            // Preallocated
             max_size = arr_reflect->item_size;
             memset(output + tbl[index].offset, 0, max_size);
             _cjsonx_set_field_buffered(output, tempstr, 
@@ -1366,7 +1374,7 @@ char* cjson_impl_to_string(cJSON* object) {
     return cJSON_PrintUnformatted(object);
 }
 
-int cjson_impl_to_string_bufferred(cJSON* object, char* buf, const int size) {
+int cjson_impl_to_string_preallocated(cJSON* object, char* buf, const int size) {
     return cJSON_PrintPreallocated(object, buf, size, 0);
 }
 
